@@ -5,7 +5,6 @@ import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
-import android.net.VpnService
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -13,12 +12,12 @@ import android.os.Looper
 import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import com.nsg.cybersentinel.runtime.SentinelRuntime
 import com.nsg.cybersentinel.service.ProtectionService
-import com.nsg.cybersentinel.vpn.CyberVpnService
 import java.util.Locale
 
 class MainActivity : Activity() {
@@ -48,65 +47,82 @@ class MainActivity : Activity() {
     }
 
     private fun buildUi(): ScrollView {
-        val bg = Color.rgb(7, 17, 20)
-        val fg = Color.rgb(232, 244, 242)
-        val accent = Color.rgb(79, 209, 197)
-        val muted = Color.rgb(143, 163, 173)
+        val black = Color.rgb(5, 7, 10)
+        val panel = Color.rgb(13, 17, 23)
+        val foreground = Color.rgb(232, 244, 242)
+        val purple = Color.rgb(123, 44, 255)
+        val seahawksGreen = Color.rgb(105, 190, 40)
+        val muted = Color.rgb(156, 171, 181)
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(32, 44, 32, 44)
-            setBackgroundColor(bg)
+            setPadding(dp(24), dp(24), dp(24), dp(40))
+            setBackgroundColor(black)
         }
+
+        val approvedBrand = resources.getIdentifier("nsg_sentinel_brand", "drawable", packageName)
+        if (approvedBrand != 0) {
+            root.addView(ImageView(this).apply {
+                setImageResource(approvedBrand)
+                adjustViewBounds = true
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                contentDescription = "NSG Sentinel approved artwork"
+            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(210)).apply {
+                bottomMargin = dp(18)
+            })
+        }
+
         root.addView(TextView(this).apply {
             text = "NSG CYBER SENTINEL"
-            textSize = 24f
-            setTextColor(fg)
+            textSize = 25f
+            setTextColor(foreground)
             setTypeface(typeface, 1)
+            gravity = Gravity.CENTER_HORIZONTAL
         })
         root.addView(TextView(this).apply {
-            text = "Defensive on-device metadata telemetry"
-            textSize = 13f
-            setTextColor(accent)
-            setPadding(0, 6, 0, 26)
+            text = "NETWORK  //  FORENSICS  //  DEFENSE  //  INCIDENT RESPONSE"
+            textSize = 11f
+            letterSpacing = 0.06f
+            setTextColor(seahawksGreen)
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(0, 6, 0, dp(22))
         })
+
         status = TextView(this).apply {
             textSize = 14f
-            setTextColor(fg)
+            setTextColor(foreground)
             setLineSpacing(6f, 1f)
-            setPadding(0, 0, 0, 24)
+            setPadding(dp(14), dp(14), dp(14), dp(14))
+            setBackgroundColor(panel)
         }
-        root.addView(status)
+        root.addView(status, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            bottomMargin = dp(18)
+        })
 
-        root.addView(button("START PROTECTION", accent) {
+        root.addView(button("START PROTECTION", purple, Color.WHITE) {
             startForegroundService(Intent(this, ProtectionService::class.java))
         })
-        root.addView(button("STOP PROTECTION", muted) {
+        root.addView(button("STOP PROTECTION", seahawksGreen, Color.BLACK) {
             stopService(Intent(this, ProtectionService::class.java))
         })
-        root.addView(button("REQUEST VPN PERMISSION", accent) {
-            val prepare = VpnService.prepare(this)
-            if (prepare != null) startActivityForResult(prepare, VPN_REQ)
-            else startVpnScaffold()
-        })
-        root.addView(button("PURGE BASELINE + AUDIT", muted) {
+        root.addView(button("PURGE BASELINE + AUDIT", muted, Color.BLACK) {
             val intent = Intent(this, ProtectionService::class.java).setAction(ProtectionService.ACTION_PURGE)
             startForegroundService(intent)
         })
 
         root.addView(TextView(this).apply {
-            text = "Metric-core rule: CEDI / CCII / CPEI / COIE remain locked until the original frozen equations are restored. No replacement coefficients are being invented."
+            text = "Defensive coefficient candidate v0.1 is active. Deep packet routing remains safety-locked until bidirectional forwarding is verified. Metadata-only protection stays available without enabling incomplete interception."
             textSize = 12f
             setTextColor(muted)
-            setPadding(0, 28, 0, 0)
+            setPadding(0, dp(28), 0, 0)
         })
 
         return ScrollView(this).apply { addView(root) }
     }
 
-    private fun button(label: String, color: Int, click: () -> Unit): Button = Button(this).apply {
+    private fun button(label: String, color: Int, textColor: Int, click: () -> Unit): Button = Button(this).apply {
         text = label
-        setTextColor(Color.BLACK)
+        setTextColor(textColor)
         setBackgroundColor(color)
         gravity = Gravity.CENTER
         setOnClickListener { click() }
@@ -127,6 +143,7 @@ class MainActivity : Activity() {
             appendLine("TX/RX RATIO   ${String.format(Locale.US, "%.3f", t.txRxRatio)}")
             appendLine("BURST Z       ${String.format(Locale.US, "%.3f", t.burstZ)}")
             appendLine("BASELINE N    ${t.baselineSamples}")
+            appendLine("CORE          ${s.metrics.coreStatus}")
             appendLine("CEDI          ${s.metrics.cedi ?: "LOCKED"}")
             appendLine("CCII          ${s.metrics.ccii ?: "LOCKED"}")
             appendLine("CPEI          ${s.metrics.cpei ?: "LOCKED"}")
@@ -144,21 +161,11 @@ class MainActivity : Activity() {
         else -> "$v B/s"
     }
 
-    private fun startVpnScaffold() {
-        startForegroundService(Intent(this, CyberVpnService::class.java))
-    }
-
-    @Deprecated("Deprecated in Android API; retained for minSdk-compatible VPN permission flow")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == VPN_REQ && resultCode == RESULT_OK) startVpnScaffold()
-    }
-
     private fun requestNotificationPermissionIfNeeded() {
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 99)
         }
     }
 
-    companion object { private const val VPN_REQ = 701 }
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 }
