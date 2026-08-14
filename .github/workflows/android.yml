@@ -20,6 +20,17 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+      - name: Materialize approved NSG Sentinel artwork
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p app/src/main/res/drawable-nodpi
+          curl -fsSL \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            "https://api.github.com/repos/NSG323/nsg-/git/blobs/ecb3cccdf21cb3b9e7238c8ccf7cadfe7b415a3c" \
+            | python3 -c 'import sys,json,base64; d=json.load(sys.stdin); sys.stdout.buffer.write(base64.b64decode(d["content"]))' \
+            > app/src/main/res/drawable-nodpi/nsg_sentinel_brand.jpg
       - name: Unit tests
         run: gradle testDebugUnitTest --stacktrace
       - name: Build debug APK
